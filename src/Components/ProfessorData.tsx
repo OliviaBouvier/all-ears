@@ -1,82 +1,55 @@
 import { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
 
-const sheetURL = "https://script.google.com/macros/s/AKfycbxK3IvHMif1944AfiR-Gm6-UPGPcQDBC9dDbjThjdmqBiyptOBv32OME9RR-lnq-Qn1/exec"; 
-
-
-const fetchData = async (): Promise<FormData[]> => {
-  try {
-    const response = await fetch(sheetURL);
-    const data = await response.json();
-    
-    console.log("Raw Data from API:", data); // Check full API response in console
-
-    if (!Array.isArray(data) || data.length < 2) {
-      console.error("Unexpected data format or empty response.");
-      return [];
-    }
-
-    return data.slice(1).map((row: string[], index: number) => {
-      console.log(`Row ${index}:`, row); // Log each row to debug indexes
-
-      return {
-        name: row[11] || "N/A", // Ensure index exists, else use fallback
-        rating: row[13] || "N/A",
-      };
-    });
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    return [];
-  }
+type Professor = {
+  name: string;
+  rating: number;
+  class: string;
+  college: string;
+  comments: string;
 };
 
-
-
-interface FormData {
-    name: string;
-    rating: string;
-}
-
-const ProfessorData = () => {
-  const [responses, setResponses] = useState<FormData[]>([]);
-  const [error, setError] = useState<string | null>(null);
+const ProfessorList = () => {
+  const [professors, setProfessors] = useState<Professor[]>([]);
 
   useEffect(() => {
-    const loadData = async () => {
-      const data = await fetchData();
-      setResponses(data);
-
-      if (data.length === 0) {
-        setError("No data found or incorrect indexes.");
-      }
+    const fetchProfessors = async () => {
+      const querySnapshot = await getDocs(collection(db, "professors"));
+      const usersList = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name,
+          rating: data.rating,
+          class: data.class,
+          college: data.college,
+          comments: data.comments,
+        } as Professor;
+      });
+      setProfessors(usersList);
     };
 
-    loadData();
+    fetchProfessors();
   }, []);
 
   return (
-    <div className="container">
-      <h2>Form Responses</h2>
-
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Rating</th>
-          </tr>
-        </thead>
-        <tbody>
-          {responses.map((response, index) => (
-            <tr key={index}>
-              <td>{response.name}</td>
-              <td>{response.rating}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <h2>Professor List</h2>
+      <div>
+        {professors.map((professor) => (
+          <div>
+          <p key={professor.name}>{professor.name}</p>
+          <p> {professor.class}</p>
+          <p> {professor.college}</p>
+          <p>{professor.rating}</p>
+          <p>{professor.comments}</p>
+          <br></br>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
 
-export default ProfessorData;
+export default ProfessorList;
